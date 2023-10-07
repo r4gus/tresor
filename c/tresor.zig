@@ -138,7 +138,10 @@ export fn Tresor_entry_field_add(entry: *anyopaque, key: [*c]const u8, value: [*
 export fn Tresor_entry_field_get(entry: *anyopaque, key: [*c]const u8) [*c]const u8 {
     var e: *Entry = @ptrCast(@alignCast(entry));
     if (e.getField(key[0..strlen(key)], std.time.milliTimestamp())) |f| {
-        return f.ptr;
+        var r = allocator.dupeZ(u8, f) catch {
+            return null;
+        };
+        return r;
     } else {
         return null;
     }
