@@ -3,6 +3,7 @@ const tresor = @import("tresor");
 const allocator = std.heap.c_allocator;
 
 const Tresor = tresor.Tresor;
+const Entry = tresor.Entry;
 
 // Bump those versions up with new releases
 const MAJ = 0;
@@ -15,6 +16,7 @@ pub const Error = enum(i32) {
     ERR_DE = -3,
     ERR_FILE = -4,
     ERR_SEAL = -5,
+    ERR_FAIL = -6,
 };
 
 export fn Tresor_new(name: [*c]const u8) ?*anyopaque {
@@ -87,7 +89,7 @@ export fn Tresor_entry_remove(self: *anyopaque, id: [*c]const u8) Error {
 }
 
 // Filter = KEY:VALUE { "," KEY:VALUE }*
-export fn Tresor_entry_many(self: *anyopaque, filter: [*c]const u8) [*c]?*anyopaque {
+export fn Tresor_entry_get_many(self: *anyopaque, filter: [*c]const u8) [*c]?*anyopaque {
     var t: *Tresor = @ptrCast(@alignCast(self));
     var filters = std.ArrayList(tresor.Data.Filter).init(allocator);
     defer filters.deinit();
@@ -116,6 +118,43 @@ export fn Tresor_entry_many(self: *anyopaque, filter: [*c]const u8) [*c]?*anyopa
     var r: [*c]?*anyopaque = @ptrCast(ret);
     r[entries.?.len] = null;
     return r;
+}
+
+export fn Tresor_entry_field_add(entry: *anyopaque, key: [*c]const u8, value: [*c]const u8) Error {
+    var e: *Entry = @ptrCast(@alignCast(entry));
+    e.addField(
+        .{
+            .key = key[0..strlen(key)],
+            .value = value[0..strlen(value)],
+        },
+        std.time.milliTimestamp(),
+    ) catch {
+        return Error.ERR_FAIL;
+    };
+
+    return Error.ERR_SUCCESS;
+}
+
+export fn Tresor_entry_field_get(entry: *anyopaque, key: [*c]const u8) [*c]const u8 {
+    var e: *Entry = @ptrCast(@alignCast(entry));
+    if (e.getField(key[0..strlen(key)], std.time.milliTimestamp())) |f| {
+        return f.ptr;
+    } else {
+        return null;
+    }
+}
+
+export fn Tresor_entry_field_update(entry: *anyopaque, key: [*c]const u8, value: [*c]const u8) Error {
+    var e: *Entry = @ptrCast(@alignCast(entry));
+    e.updateField(
+        key[0..strlen(key)],
+        value[0..strlen(value)],
+        std.time.milliTimestamp(),
+    ) catch {
+        return Error.ERR_FAIL;
+    };
+
+    return Error.ERR_SUCCESS;
 }
 
 export fn Tresor_seal(self: *anyopaque, path: [*c]const u8, pw: [*c]const u8) Error {
@@ -169,13 +208,13 @@ fn openFile(path: [*c]const u8) !std.fs.File {
         if (home == null) return error.NoHome;
         var home_dir = try std.fs.openDirAbsolute(home.?, .{});
         defer home_dir.close();
-        var file = try home_dir.openFile(path[2..strlen(path)], .{});
+        var file = try home_dir.openFile(path[2..strlen(path)], .{ .mode = .read_write });
         break :blk file;
     } else if (path[0] == '/') blk: {
-        var file = try std.fs.openFileAbsolute(path[0..strlen(path)], .{});
+        var file = try std.fs.openFileAbsolute(path[0..strlen(path)], .{ .mode = .read_write });
         break :blk file;
     } else blk: {
-        var file = try std.fs.cwd().openFile(path[0..strlen(path)], .{});
+        var file = try std.fs.cwd().openFile(path[0..strlen(path)], .{ .mode = .read_write });
         break :blk file;
     };
 }

@@ -26,6 +26,12 @@ pub fn build(b: *std.Build) !void {
     });
     lib.addModule("tresor", module);
     lib.linkLibC();
+    lib.installHeadersDirectoryOptions(.{
+        .source_dir = std.Build.LazyPath{ .path = "c" },
+        .install_dir = .header,
+        .install_subdir = "tresor",
+        .exclude_extensions = &.{ ".c", ".zig" },
+    });
     b.installArtifact(lib);
 
     const main_tests = b.addTest(.{
