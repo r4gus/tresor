@@ -17,7 +17,7 @@ TresorError Tresor_entry_create(void* self, const char* id);
 Entry Tresor_entry_get(void* self, const char* id);
 TresorError Tresor_entry_remove(void* self, const char* id);
 void** Tresor_entry_get_many(void* self, const char* filter);
-TresorError Tresor_entry_filed_add(void* entry, const char* key, const char* value);
+TresorError Tresor_entry_field_add(void* entry, const char* key, const char* value);
 const char* Tresor_entry_field_get(void* entry, const char* key);
 TresorError Tresor_entry_field_update(void* entry, const char* key, const char* value);
 TresorError Tresor_seal(void* self, const char* path, const char* pw);
