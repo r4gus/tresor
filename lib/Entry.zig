@@ -42,18 +42,22 @@ pub fn new(id: []const u8, time: i64, allocator: std.mem.Allocator) @This() {
 pub fn deinit(self: *const @This()) void {
     self.allocator.free(self.id);
     if (self.fields) |fields| {
-        for (fields) |field| {
+        for (fields) |*field| {
             self.allocator.free(field.key);
+            @memset(field.value, 0);
             self.allocator.free(field.value);
         }
         self.allocator.free(fields);
     }
 }
 
-pub fn addField(self: *@This(), field: Field, time: i64) !void {
+/// Add a new Field to the Entry.
+///
+/// This function will return a error if the Field (key) already exists.
+pub fn addField(self: *@This(), key: []const u8, value: []const u8, time: i64) !void {
     self.fields = if (self.fields) |fields| blk: {
-        for (fields) |_field| {
-            if (std.mem.eql(u8, _field.key, field.key)) {
+        for (fields) |field| {
+            if (std.mem.eql(u8, field.key, key)) {
                 return error.DoesExist;
             }
         }
@@ -67,17 +71,18 @@ pub fn addField(self: *@This(), field: Field, time: i64) !void {
     };
     // At this point self.fields is NOT null
 
-    var k = try self.allocator.alloc(u8, field.key.len);
+    var k = try self.allocator.alloc(u8, key.len);
     errdefer self.allocator.free(k);
-    var v = try self.allocator.alloc(u8, field.value.len);
+    var v = try self.allocator.alloc(u8, value.len);
     errdefer self.allocator.free(v);
-    @memcpy(k, field.key);
-    @memcpy(v, field.value);
+    @memcpy(k, key);
+    @memcpy(v, value);
 
     self.fields.?[self.fields.?.len - 1] = .{ .key = k, .value = v };
     self.times.lastModificationTime = time;
 }
 
+/// Get the value of the Field specified by `key`.
 pub fn getField(self: *@This(), key: []const u8, time: i64) ?[]const u8 {
     if (self.fields) |fields| {
         self.times.lastAccessTime = time;
@@ -97,7 +102,7 @@ pub fn update(self: *@This(), other: *@This(), time: i64) !void {
         for (fields) |field| {
             self.updateField(field.key, field.value, time) catch |err| {
                 if (err == error.DoesNotExist) {
-                    try self.addField(field, time);
+                    try self.addField(field.key, field.value, time);
                 } else {
                     return err;
                 }
@@ -106,6 +111,9 @@ pub fn update(self: *@This(), other: *@This(), time: i64) !void {
     }
 }
 
+/// Update the value of a Field.
+///
+/// Returns a error of the given `key` doesn't exist.
 pub fn updateField(self: *@This(), key: []const u8, value: []const u8, time: i64) !void {
     if (self.fields) |fields| {
         for (fields) |*field| {
@@ -113,6 +121,7 @@ pub fn updateField(self: *@This(), key: []const u8, value: []const u8, time: i64
                 var mem = try self.allocator.alloc(u8, value.len);
                 @memcpy(mem, value);
                 const k = field.key;
+                @memset(field.value, 0);
                 self.allocator.free(field.value);
                 field.* = .{ .key = k, .value = mem };
 
@@ -124,6 +133,7 @@ pub fn updateField(self: *@This(), key: []const u8, value: []const u8, time: i64
     return error.DoesNotExist;
 }
 
+/// Remove a Field from the given Entry.
 pub fn removeField(self: *@This(), key: []const u8, time: i64) !?Field {
     if (self.fields) |fields| {
         var i: usize = 0;
@@ -160,7 +170,7 @@ test "create Entry with UserName and URL fields" {
     try std.testing.expectEqual(e.times.usageCount, 0);
 
     const time2 = std.time.milliTimestamp();
-    try e.addField(.{ .key = "UserName", .value = "r4gus" }, time2);
+    try e.addField("UserName", "r4gus", time2);
     try std.testing.expectEqual(time2, e.times.lastModificationTime);
     try std.testing.expectEqual(time, e.times.creationTime);
     try std.testing.expectEqual(time, e.times.lastAccessTime);
@@ -176,7 +186,7 @@ test "create Entry with UserName and URL fields" {
     try std.testing.expectEqual(@as(usize, @intCast(1)), e.fields.?.len);
 
     const time4 = std.time.milliTimestamp();
-    try e.addField(.{ .key = "URL", .value = "https://ziglang.org" }, time4);
+    try e.addField("URL", "https://ziglang.org", time4);
     try std.testing.expectEqual(time4, e.times.lastModificationTime);
     try std.testing.expectEqual(time, e.times.creationTime);
     try std.testing.expectEqual(time3, e.times.lastAccessTime);
@@ -215,8 +225,8 @@ test "serialize entry" {
     @memcpy(id, "\x6a\x32\xdb\x1f\xff\x8d\xf0\x57\xb2\x85\xa9\x60\x0a\x2a\x2e\x1e\x61\x2b\xc4\xa9\x49\x3e\x8d\xf1\x6c\x31\x93\x04\x27\xad\x68\xc7\x24\x0b\x98\x4a\x8a\xf8\xaa\xf7\xe4\x53\x1f\x6c\x28\x97\xa9\x84\x6a\xc9\x74\x7a\xa3\x87\xea\xaf\xf0\xf6\x9a\x58\x36\x1f\x19\xdf");
     var e = @This().new(id, 0, allocator);
     defer e.deinit();
-    try e.addField(.{ .key = "UserName", .value = "r4gus" }, 0);
-    try e.addField(.{ .key = "URL", .value = "https://ziglang.org" }, 0);
+    try e.addField("UserName", "r4gus", 0);
+    try e.addField("URL", "https://ziglang.org", 0);
 
     try cbor.stringify(e, .{}, str.writer());
 

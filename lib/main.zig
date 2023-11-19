@@ -7,20 +7,51 @@ pub const header = @import("header.zig");
 pub const Data = @import("Data.zig");
 pub const Entry = @import("Entry.zig");
 
-// Serialized file
-// SECRET
-// || OUTER_HEADER ||
-// OUTER_HEADER
-// DATA
-// TAG
-
 pub const Error = error{
     OutOfMemory,
     DoesNotExist,
     DoesExist,
 };
 
-/// Cbor Key Store
+/// Tresor
+///
+/// Data structure for managing secrets. Each secret (also called Entry) contains
+/// one or more key-value pairs (so called Fields).
+///
+/// A serialized key store is structured as follows:
+///
+/// 1. The magic string "SECRET"
+/// 2. The length of the header
+/// 3. A CBOR encoded header
+///     * The major version number
+///     * The minor version number
+///     * A cipher identifier and the corresponding IV
+///     * A compression algorithm identifier (currently not supported)
+///     * A key derivation function identifier and corresponding parameters (e.g. number of rounds)
+/// 4. The TAG of a AEAD cipher
+/// 5. The AEAD encrypted CBOR data, with the header as associated data
+///
+/// ## Encryption algorithms
+///
+/// The following encryption algorithms are supported:
+///     * ChaCha20
+///
+/// We can extend this library to support additional AEAD ciphers, if neccessary.
+///
+///
+/// ## Key Derivation Function
+///
+/// The following KDFs are supported:
+///     * Argon2id
+///
+/// We can extend this library to support additional KDFs, if neccessary.
+///
+/// ## Info
+///
+/// * The data format doesn't store the length of the encrypted body! Please
+///   make sure that you store the serialized data in a way that allows you
+///   to infer the length of the body (e.g. when writing to a file, make sure
+///   you truncate the file to 0 byte before writing to it).
 pub const Tresor = struct {
     /// Header with information about the file and how to decrypt it
     outer_header: header.OuterHeader,
@@ -30,6 +61,7 @@ pub const Tresor = struct {
     rand: std.rand.Random,
     time: *const fn () i64,
 
+    /// Deinitialize the given data structure
     pub fn deinit(self: *@This()) void {
         if (self.outer_header.cipher.iv) |iv| {
             self.allocator.free(iv);
@@ -39,25 +71,50 @@ pub const Tresor = struct {
         self.data.deinit();
     }
 
+    /// Create a new entry using the allocator assigned to the key store.
+    ///
+    /// The caller owns the memory of the data structure until it
+    /// has been added to the key store.
     pub fn createEntry(self: *@This(), id: []const u8) Error!Entry {
         var a = try self.allocator.alloc(u8, id.len);
         @memcpy(a, id);
         return Entry.new(a, self.time(), self.allocator);
     }
 
+    /// Add a Entry to the given keystore.
+    ///
+    /// This will fail if the id of the Entry is already in use.
     pub fn addEntry(self: *@This(), entry: Entry) Error!void {
         try self.data.addEntry(entry, self.time());
     }
 
+    /// Get a reference to the Entry with the given id.
+    ///
+    /// Returns null if the Entry doesn't exist.
     pub fn getEntry(self: *@This(), id: []const u8) ?*Entry {
         return self.data.getEntry(id, self.time());
     }
 
+    /// Find and remove the Entry with the given id.
+    ///
+    /// Returns an error if the Entry doesn't exist, i.e.
+    /// make sure you handle it using catch if you are not
+    /// sure if the id exists.
     pub fn removeEntry(self: *@This(), id: []const u8) Error!void {
         var e = try self.data.removeEntry(id, self.time());
         e.deinit();
     }
 
+    /// Get all Entries that math the given Filters.
+    ///
+    /// Each filter is string-key-value pair that is compared to the fields of each Entry.
+    /// A Entry is only part of the returned slice if all Filters match Fields of the Entry.
+    /// For example, you might have some Entries with the Field `"Type": "Passkey"` and
+    /// others with the Field `"Type": "Password"`. You can the get all stored Passkeys
+    /// by providing the `"Type": "Passkey"` Filter. If you pass `&.{}`, no Filters are
+    /// applied, i.e. you get back the whole database.
+    ///
+    /// The caller owns the returned slice and is responsible to free it.
     pub fn getEntries(
         self: *@This(),
         filters: []const Data.Filter,
@@ -66,6 +123,7 @@ pub const Tresor = struct {
         return self.data.getEntries(filters, allocator, self.time());
     }
 
+    /// Serialize the given key store, using the Writer `out` and `pw` for encryption.
     pub fn seal(self: *@This(), out: anytype, pw: []const u8) !void {
         // 1. derive key from secret using kdf.
         // 1.a) first create a random salt
@@ -120,6 +178,7 @@ pub const Tresor = struct {
         } else unreachable;
     }
 
+    /// Decode a the `raw' data into a key store, using `pw` for decryption.
     pub fn open(
         raw: []const u8,
         pw: []const u8,
@@ -273,8 +332,8 @@ test "serialize store" {
     const time1 = std.time.milliTimestamp();
     std.crypto.random.bytes(id1[0..]);
     var e1 = Entry.new(id1, time1, allocator);
-    try e1.addField(.{ .key = "UserName", .value = "SugarYourCoffee" }, time1);
-    try e1.addField(.{ .key = "URL", .value = "https://sugaryourcoffee.de" }, time1);
+    try e1.addField("UserName", "SugarYourCoffee", time1);
+    try e1.addField("URL", "https://sugaryourcoffee.de", time1);
     try store.addEntry(e1);
 
     var str = std.ArrayList(u8).init(allocator);

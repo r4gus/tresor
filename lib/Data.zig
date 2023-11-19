@@ -1,3 +1,7 @@
+//! A collection of all Entries.
+//!
+//! Most of the time a Entry represents a secret with corresponding meta data.
+
 const std = @import("std");
 const cbor = @import("zbor");
 const Entry = @import("Entry.zig");
@@ -162,8 +166,8 @@ test "create Data struct and add two entries" {
     const time1 = std.time.milliTimestamp();
     std.crypto.random.bytes(id1[0..]);
     var e1 = Entry.new(id1, time1, allocator);
-    try e1.addField(.{ .key = "UserName", .value = "r4gus" }, time1);
-    try e1.addField(.{ .key = "URL", .value = "https://ziglang.org" }, time1);
+    try e1.addField("UserName", "r4gus", time1);
+    try e1.addField("URL", "https://ziglang.org", time1);
 
     const time2 = std.time.milliTimestamp();
     try d.addEntry(e1, time2);
@@ -178,8 +182,8 @@ test "create Data struct and add two entries" {
     const time3 = std.time.milliTimestamp();
     std.crypto.random.bytes(id2[0..]);
     var e2 = Entry.new(id2, time3, allocator);
-    try e2.addField(.{ .key = "UserName", .value = "SugarYourCoffee" }, time1);
-    try e2.addField(.{ .key = "URL", .value = "https://sugaryourcoffee.de" }, time1);
+    try e2.addField("UserName", "SugarYourCoffee", time1);
+    try e2.addField("URL", "https://sugaryourcoffee.de", time1);
 
     const time4 = std.time.milliTimestamp();
     try d.addEntry(e2, time4);
@@ -238,14 +242,14 @@ test "serialize data" {
     var id1 = try allocator.alloc(u8, 64);
     @memcpy(id1, "\x6a\x32\xdb\x1f\xff\x8d\xf0\x57\xb2\x85\xa9\x60\x0a\x2a\x2e\x1e\x61\x2b\xc4\xa9\x49\x3e\x8d\xf1\x6c\x31\x93\x04\x27\xad\x68\xc7\x24\x0b\x98\x4a\x8a\xf8\xaa\xf7\xe4\x53\x1f\x6c\x28\x97\xa9\x84\x6a\xc9\x74\x7a\xa3\x87\xea\xaf\xf0\xf6\x9a\x58\x36\x1f\x19\xdf");
     var e1 = Entry.new(id1, 0, allocator);
-    try e1.addField(.{ .key = "UserName", .value = "r4gus" }, 0);
-    try e1.addField(.{ .key = "URL", .value = "https://ziglang.org" }, 0);
+    try e1.addField("UserName", "r4gus", 0);
+    try e1.addField("URL", "https://ziglang.org", 0);
 
     var id2 = try allocator.alloc(u8, 64);
     @memcpy(id2, "\x6b\x32\xdb\x1f\xff\x8d\xf0\x57\xb2\x85\xa9\x60\x0a\x2a\x2e\x1e\x61\x2b\xc4\xa9\x49\x3e\x8d\xf1\x6c\x31\x93\x04\x27\xad\x68\xc7\x24\x0b\x98\x4a\x8a\xf8\xaa\xf7\xe4\x53\x1f\x6c\x28\x97\xa9\x84\x6a\xc9\x74\x7a\xa3\x87\xea\xaf\xf0\xf6\x9a\x58\x36\x1f\x19\xdf");
     var e2 = Entry.new(id2, 0, allocator);
-    try e2.addField(.{ .key = "UserName", .value = "SugarYourCoffee" }, 0);
-    try e2.addField(.{ .key = "URL", .value = "https://sugaryourcoffee.de" }, 0);
+    try e2.addField("UserName", "SugarYourCoffee", 0);
+    try e2.addField("URL", "https://sugaryourcoffee.de", 0);
 
     try d.addEntry(e1, 0);
     try d.addEntry(e2, 0);
