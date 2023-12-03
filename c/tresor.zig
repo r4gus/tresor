@@ -123,10 +123,8 @@ export fn Tresor_entry_get_many(self: *anyopaque, filter: [*c]const u8) [*c]?*an
 export fn Tresor_entry_field_add(entry: *anyopaque, key: [*c]const u8, value: [*c]const u8) Error {
     var e: *Entry = @ptrCast(@alignCast(entry));
     e.addField(
-        .{
-            .key = key[0..strlen(key)],
-            .value = value[0..strlen(value)],
-        },
+        key[0..strlen(key)],
+        value[0..strlen(value)],
         std.time.milliTimestamp(),
     ) catch {
         return Error.ERR_FAIL;

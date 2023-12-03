@@ -14,13 +14,13 @@ fields: ?[]Field = null,
 
 allocator: std.mem.Allocator,
 
-pub fn cborStringify(self: *const @This(), options: cbor.StringifyOptions, out: anytype) !void {
+pub fn cborStringify(self: *const @This(), options: cbor.Options, out: anytype) !void {
     _ = options;
 
     try cbor.stringify(self, .{
-        .from_cborStringify = true,
+        .from_callback = true,
         .field_settings = &.{
-            .{ .name = "allocator", .options = .{ .skip = true } },
+            .{ .name = "allocator", .field_options = .{ .skip = .Skip } },
         },
     }, out);
 }
