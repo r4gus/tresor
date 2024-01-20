@@ -1,7 +1,7 @@
 const std = @import("std");
 const cbor = @import("zbor");
 
-pub const VERSION: []const u8 = "0.1.1";
+pub const VERSION: []const u8 = "0.1.2";
 
 const ChaCha20 = std.crypto.aead.chacha_poly.ChaCha20Poly1305;
 
