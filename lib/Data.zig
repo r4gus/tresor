@@ -133,7 +133,7 @@ pub fn removeEntry(self: *@This(), id: []const u8, time: i64) !Entry {
         var i: usize = 0;
         for (entries) |entry| {
             if (std.mem.eql(u8, entry.id, id)) {
-                var e = entry;
+                const e = entry;
                 var new_mem = try self.allocator.alloc(Entry, entries.len - 1);
                 @memcpy(new_mem[0..i], entries[0..i]);
                 @memcpy(new_mem[i..], entries[i + 1 ..]);
@@ -241,13 +241,13 @@ test "serialize data" {
     var d = @This().new("PassKeyXC", "DB1", 0, allocator);
     defer d.deinit();
 
-    var id1 = try allocator.alloc(u8, 64);
+    const id1 = try allocator.alloc(u8, 64);
     @memcpy(id1, "\x6a\x32\xdb\x1f\xff\x8d\xf0\x57\xb2\x85\xa9\x60\x0a\x2a\x2e\x1e\x61\x2b\xc4\xa9\x49\x3e\x8d\xf1\x6c\x31\x93\x04\x27\xad\x68\xc7\x24\x0b\x98\x4a\x8a\xf8\xaa\xf7\xe4\x53\x1f\x6c\x28\x97\xa9\x84\x6a\xc9\x74\x7a\xa3\x87\xea\xaf\xf0\xf6\x9a\x58\x36\x1f\x19\xdf");
     var e1 = Entry.new(id1, 0, allocator);
     try e1.addField("UserName", "r4gus", 0);
     try e1.addField("URL", "https://ziglang.org", 0);
 
-    var id2 = try allocator.alloc(u8, 64);
+    const id2 = try allocator.alloc(u8, 64);
     @memcpy(id2, "\x6b\x32\xdb\x1f\xff\x8d\xf0\x57\xb2\x85\xa9\x60\x0a\x2a\x2e\x1e\x61\x2b\xc4\xa9\x49\x3e\x8d\xf1\x6c\x31\x93\x04\x27\xad\x68\xc7\x24\x0b\x98\x4a\x8a\xf8\xaa\xf7\xe4\x53\x1f\x6c\x28\x97\xa9\x84\x6a\xc9\x74\x7a\xa3\x87\xea\xaf\xf0\xf6\x9a\x58\x36\x1f\x19\xdf");
     var e2 = Entry.new(id2, 0, allocator);
     try e2.addField("UserName", "SugarYourCoffee", 0);

@@ -11,8 +11,8 @@ pub fn build(b: *std.Build) !void {
     const zbor_module = zbor_dep.module("zbor");
 
     const module = b.addModule("tresor", .{
-        .source_file = .{ .path = "lib/main.zig" },
-        .dependencies = &.{
+        .root_source_file = .{ .path = "lib/main.zig" },
+        .imports = &.{
             .{ .name = "zbor", .module = zbor_module },
         },
     });
@@ -24,14 +24,9 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
     });
-    lib.addModule("tresor", module);
+    lib.root_module.addImport("tresor", module);
     lib.linkLibC();
-    lib.installHeadersDirectoryOptions(.{
-        .source_dir = std.Build.LazyPath{ .path = "c" },
-        .install_dir = .header,
-        .install_subdir = "tresor",
-        .exclude_extensions = &.{ ".c", ".zig" },
-    });
+    lib.installHeader(b.path("c/tresor.h"), "tresor.h");
     b.installArtifact(lib);
 
     const main_tests = b.addTest(.{
@@ -39,7 +34,7 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
     });
-    main_tests.addModule("zbor", zbor_module);
+    main_tests.root_module.addImport("zbor", zbor_module);
     const run_main_tests = b.addRunArtifact(main_tests);
     const test_step = b.step("test", "Run library tests");
     test_step.dependOn(&run_main_tests.step);

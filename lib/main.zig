@@ -78,7 +78,7 @@ pub const Tresor = struct {
     /// The caller owns the memory of the data structure until it
     /// has been added to the key store.
     pub fn createEntry(self: *@This(), id: []const u8) Error!Entry {
-        var a = try self.allocator.alloc(u8, id.len);
+        const a = try self.allocator.alloc(u8, id.len);
         @memcpy(a, id);
         return Entry.new(a, self.time(), self.allocator);
     }
@@ -162,7 +162,7 @@ pub const Tresor = struct {
             const oh_len = @as(u32, @intCast(oh.items.len));
 
             try out.writeAll("\x53\x45\x43\x52\x45\x54"); // SECRET
-            try out.writeIntLittle(u32, oh_len);
+            try out.writeInt(u32, oh_len, .little);
             try out.writeAll(oh.items);
 
             // 4. Write
@@ -216,11 +216,11 @@ pub const Tresor = struct {
 
         // The data layout might differ depending on the encryption scheme used
         const mem = if (outer_header.cipher.type == .ChaCha20) blk: {
-            var mem = try allocator.alloc(u8, raw[data_index + 16 ..].len);
+            const mem = try allocator.alloc(u8, raw[data_index + 16 ..].len);
             errdefer allocator.free(mem);
 
             var tag: [16]u8 = undefined;
-            std.mem.copy(u8, tag[0..], raw[data_index .. data_index + 16]);
+            @memcpy(tag[0..], raw[data_index .. data_index + 16]);
 
             ChaCha20.decrypt(
                 mem, // out
@@ -286,9 +286,9 @@ pub const Tresor = struct {
             },
         };
 
-        var gen = try a.alloc(u8, generator.len);
+        const gen = try a.alloc(u8, generator.len);
         @memcpy(gen, generator);
-        var n = try a.alloc(u8, name.len);
+        const n = try a.alloc(u8, name.len);
         @memcpy(n, name);
 
         return @This(){

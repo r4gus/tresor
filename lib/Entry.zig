@@ -71,9 +71,9 @@ pub fn addField(self: *@This(), key: []const u8, value: []const u8, time: i64) !
     };
     // At this point self.fields is NOT null
 
-    var k = try self.allocator.alloc(u8, key.len);
+    const k = try self.allocator.alloc(u8, key.len);
     errdefer self.allocator.free(k);
-    var v = try self.allocator.alloc(u8, value.len);
+    const v = try self.allocator.alloc(u8, value.len);
     errdefer self.allocator.free(v);
     @memcpy(k, key);
     @memcpy(v, value);
@@ -118,7 +118,7 @@ pub fn updateField(self: *@This(), key: []const u8, value: []const u8, time: i64
     if (self.fields) |fields| {
         for (fields) |*field| {
             if (std.mem.eql(u8, field.key, key)) {
-                var mem = try self.allocator.alloc(u8, value.len);
+                const mem = try self.allocator.alloc(u8, value.len);
                 @memcpy(mem, value);
                 const k = field.key;
                 @memset(field.value, 0);
@@ -221,7 +221,7 @@ test "serialize entry" {
     var str = std.ArrayList(u8).init(allocator);
     defer str.deinit();
 
-    var id = try allocator.alloc(u8, 64);
+    const id = try allocator.alloc(u8, 64);
     @memcpy(id, "\x6a\x32\xdb\x1f\xff\x8d\xf0\x57\xb2\x85\xa9\x60\x0a\x2a\x2e\x1e\x61\x2b\xc4\xa9\x49\x3e\x8d\xf1\x6c\x31\x93\x04\x27\xad\x68\xc7\x24\x0b\x98\x4a\x8a\xf8\xaa\xf7\xe4\x53\x1f\x6c\x28\x97\xa9\x84\x6a\xc9\x74\x7a\xa3\x87\xea\xaf\xf0\xf6\x9a\x58\x36\x1f\x19\xdf");
     var e = @This().new(id, 0, allocator);
     defer e.deinit();

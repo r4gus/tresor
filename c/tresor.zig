@@ -20,7 +20,7 @@ pub const Error = enum(i32) {
 };
 
 export fn Tresor_new(name: [*c]const u8) ?*anyopaque {
-    var t = allocator.create(Tresor) catch |err| {
+    const t = allocator.create(Tresor) catch |err| {
         std.log.err("Tresor_new: unable to allocate memory ({any})", .{err});
         return null;
     };
@@ -52,7 +52,7 @@ export fn Tresor_deinit(self: *anyopaque) void {
 
 export fn Tresor_entry_create(self: *anyopaque, id: [*c]const u8) Error {
     var t: *Tresor = @ptrCast(@alignCast(self));
-    var e = t.createEntry(id[0..strlen(id)]) catch |err| {
+    const e = t.createEntry(id[0..strlen(id)]) catch |err| {
         return switch (err) {
             error.OutOfMemory => Error.ERR_AOM,
             error.DoesNotExist => Error.ERR_DNE,
@@ -136,7 +136,7 @@ export fn Tresor_entry_field_add(entry: *anyopaque, key: [*c]const u8, value: [*
 export fn Tresor_entry_field_get(entry: *anyopaque, key: [*c]const u8) [*c]const u8 {
     var e: *Entry = @ptrCast(@alignCast(entry));
     if (e.getField(key[0..strlen(key)], std.time.milliTimestamp())) |f| {
-        var r = allocator.dupeZ(u8, f) catch {
+        const r = allocator.dupeZ(u8, f) catch {
             return null;
         };
         return r;
@@ -179,12 +179,12 @@ export fn Tresor_open(path: [*c]const u8, pw: [*c]const u8) ?*anyopaque {
     };
     defer file.close();
 
-    var mem = file.readToEndAlloc(allocator, 50_000_000) catch {
+    const mem = file.readToEndAlloc(allocator, 50_000_000) catch {
         return null;
     };
     defer allocator.free(mem);
 
-    var t = allocator.create(Tresor) catch |err| {
+    const t = allocator.create(Tresor) catch |err| {
         std.log.err("Tresor_new: unable to allocate memory ({any})", .{err});
         return null;
     };
@@ -205,17 +205,17 @@ export fn Tresor_open(path: [*c]const u8, pw: [*c]const u8) ?*anyopaque {
 
 fn openFile(path: [*c]const u8) !std.fs.File {
     return if (path[0] == '~' and path[1] == '/') blk: {
-        const home = std.os.getenv("HOME");
+        const home = std.c.getenv("HOME");
         if (home == null) return error.NoHome;
-        var home_dir = try std.fs.openDirAbsolute(home.?, .{});
+        var home_dir = try std.fs.openDirAbsolute(home.?[0..strlen(home.?)], .{});
         defer home_dir.close();
-        var file = try home_dir.openFile(path[2..strlen(path)], .{ .mode = .read_write });
+        const file = try home_dir.openFile(path[2..strlen(path)], .{ .mode = .read_write });
         break :blk file;
     } else if (path[0] == '/') blk: {
-        var file = try std.fs.openFileAbsolute(path[0..strlen(path)], .{ .mode = .read_write });
+        const file = try std.fs.openFileAbsolute(path[0..strlen(path)], .{ .mode = .read_write });
         break :blk file;
     } else blk: {
-        var file = try std.fs.cwd().openFile(path[0..strlen(path)], .{ .mode = .read_write });
+        const file = try std.fs.cwd().openFile(path[0..strlen(path)], .{ .mode = .read_write });
         break :blk file;
     };
 }

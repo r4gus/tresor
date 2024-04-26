@@ -33,7 +33,7 @@ pub const Cipher = enum {
     ChaCha20,
 
     pub fn iv(self: @This(), rand: std.rand.Random, a: std.mem.Allocator) ![]u8 {
-        var mem = switch (self) {
+        const mem = switch (self) {
             .ChaCha20 => try a.alloc(u8, 12),
         };
 
@@ -48,7 +48,7 @@ pub const Kdf = enum {
     pub fn new(self: @This()) KdfParameters {
         switch (self) {
             .Argon2id => {
-                var x = KdfParameters{
+                const x = KdfParameters{
                     .Argon2id = .{
                         .S = undefined,
                         // recommendations by OWASP
